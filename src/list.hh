@@ -24,9 +24,11 @@ private:
 
 public:
   class iterator;
-  class const_iterator;
+  // class const_iterator;
+  using const_iterator = const iterator;
   class reverse_iterator;
-  class const_reverse_iterator;
+  // class const_reverse_iterator;
+  using const_reverse_iterator = const reverse_iterator;
 
   /////////////////////////////////////////////////////////////////////////////
   //                             Member functions                            //
@@ -337,25 +339,6 @@ public:
     T operator*() { return it->x; }
   };
 
-  class const_iterator : protected iterator {
-  public:
-    const_iterator() : iterator() {}
-    explicit const_iterator(T *point) : iterator(point) {}
-
-    explicit const_iterator(const iterator &other) : iterator(other) {}
-    const_iterator(const const_iterator &other) : iterator(other) {}
-
-    explicit const_iterator(iterator &&other) : iterator(std::move(other)) {}
-    const_iterator(const_iterator &&other) : iterator(std::move(other)) {}
-
-    const_iterator &operator++() = delete;
-    const_iterator operator++(int) = delete;
-    const_iterator &operator--() = delete;
-    const_iterator operator--(int) = delete;
-
-    ~const_iterator() {}
-  };
-
   class reverse_iterator : protected iterator {
   public:
     reverse_iterator() : iterator() {}
@@ -388,25 +371,6 @@ public:
     }
 
     ~reverse_iterator() {}
-  };
-
-  class const_reverse_iterator : protected iterator {
-  public:
-    const_reverse_iterator() : iterator() {}
-    explicit const_reverse_iterator(T *point) : iterator(point) {}
-
-    const_reverse_iterator(const const_reverse_iterator &other)
-        : iterator(other) {}
-
-    const_reverse_iterator(const_reverse_iterator &&other)
-        : iterator(std::move(other)) {}
-
-    const_reverse_iterator &operator++() = delete;
-    const_reverse_iterator &operator++(int) = delete;
-    const_reverse_iterator &operator--() = delete;
-    const_reverse_iterator &operator--(int) = delete;
-
-    ~const_reverse_iterator() {}
   };
 };
 
