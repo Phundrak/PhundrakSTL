@@ -10,7 +10,7 @@ Developped under Spacemacs, compiled with Clang++, debugged with GDB and DDD, an
 
 Haha, good joke.
 
-Seriously, if you want to use it, just download the header files, place them in your include directory in your project, and add them with =include "vector.hh"= or something like that. But honestly, use it only for testing purposes, not for actual work. That would be a terrible idea.
+Seriously, if you want to use it, just download the header files, place them in your include directory in your project, and add them with ~#include "vector.hh"~ or something like that. But honestly, use it only for testing purposes, not for actual work. That would be a terrible idea.
 
 * Licence
 
