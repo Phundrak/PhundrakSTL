@@ -3,6 +3,7 @@
 #include <iterator>
 #include <stdexcept>
 #include <iostream>
+#include <type_traits>
 
 namespace phundrak {
 
@@ -63,22 +64,26 @@ namespace phundrak {
         push_back(value);
     }
 
-    template <class InputIt> void assign(InputIt first, InputIt last) {
-      clear();
-      capacity_ = std::distance(first, last);
-      size_ = std::distance(first, last);
-      data_ = new T[size_];
-      for (int i = 0; first != last; ++first, ++i)
-        data_[i] = *first;
-    }
+    template<typename InputIt,
+             typename std::enable_if_t<!std::is_integral<InputIt>::value, InputIt>* = nullptr>
+
+
+    // template <class InputIt> void assign(InputIt first, InputIt last) {
+    //   clear();
+    //   capacity_ = std::distance(first, last);
+    //   size_ = std::distance(first, last);
+    //   data_ = new T[size_];
+    //   for (int i = 0; first != last; ++first, ++i)
+    //     data_[i] = *first;
+    // }
 
     // Element access /////////////////////////////////////////////////////////
 
     T &at(size_t pos) {
       try {
-        if (pos >= size_ || pos < 0)
+        if (pos >= size_)
           throw std::out_of_range("Out of range");
-      } catch (std::out_of_range e) {
+      } catch (const std::out_of_range& e) {
         std::cout << e.what() << " in phundrak::vector " << this << '\n';
         std::terminate();
       }
@@ -116,7 +121,7 @@ namespace phundrak {
     // Capacity ///////////////////////////////////////////////////////////////
 
     bool empty() const noexcept {
-      return (size_ <= 0 || data_ == nullptr) ? true : false;
+      return (data_ == nullptr) ? true : false;
     }
 
     size_t size() const noexcept { return size_; }
