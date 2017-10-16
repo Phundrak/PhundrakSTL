@@ -205,6 +205,8 @@ public:
   //                                Modifiers                                //
   /////////////////////////////////////////////////////////////////////////////
 
+  // clear ////////////////////////////////////////////////////////////////////
+
   void clear() {
     cell *it = sentry->n;
     while (it != sentry) {
@@ -213,6 +215,8 @@ public:
       delete todel;
     }
   }
+
+  // insert ///////////////////////////////////////////////////////////////////
 
   iterator insert(const_iterator pos, const T &value) {
     cell *elem = new cell{value};
@@ -239,7 +243,62 @@ public:
     return iterator{pos};
   }
 
+  // emplace //////////////////////////////////////////////////////////////////
 
+  template<class... Args>
+  iterator emplace(const_iterator pos, Args&&... args) {
+    return insert(pos, T{std::forward<Args>(args)...});
+  }
+
+  // erase ////////////////////////////////////////////////////////////////////
+
+  iterator erase(const_iterator pos) {
+    pos->p->n = pos->n;
+    pos->n->p = pos->p;
+    pos->n = nullptr;
+    pos->p = nullptr;
+    cell* todel = pos;
+    ++pos;
+    delete todel;
+    return pos;
+  }
+
+  iterator erase(const_iterator begin, const_iterator end) {
+    while(begin != end) {
+      begin = erase(begin);
+    }
+    return begin;
+  }
+
+  // push_back ////////////////////////////////////////////////////////////////
+
+  void push_back(const T &v) {
+    cell *c = new cell;
+    c->x = v;
+    c->p = sentry->p;
+    c->n = sentry;
+    sentry->p->n = c;
+    sentry->p = c;
+  }
+
+  void push_back(T&& v) {
+    cell *c = new cell;
+    std::swap(c->x, v);
+    c->p = sentry->p;
+    c->n = sentry;
+    sentry->p->n = c;
+    sentry->p = c;
+  }
+
+  // emplace_back /////////////////////////////////////////////////////////////
+
+  template<class... Args>
+  T& emplace_back(Args&&... args) {
+    emplace(begin(), args...);
+    return *begin();
+  }
+
+  // pop_back /////////////////////////////////////////////////////////////////
 
   bool empty() { return sentry->p == sentry; }
 
@@ -250,15 +309,6 @@ public:
     c->p = sentry;
     sentry->n->p = c;
     sentry->n = c;
-  }
-
-  void push_back(const T &v) {
-    cell *c = new cell;
-    c->x = v;
-    c->p = sentry->p;
-    c->n = sentry;
-    sentry->p->n = c;
-    sentry->p = c;
   }
 
   void pop_front() {
