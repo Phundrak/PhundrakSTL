@@ -44,3 +44,5 @@ gmon\.out
 *.out
 *.app
 debug/*
+
+debug/
