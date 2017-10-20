@@ -1,5 +1,3 @@
-// TODO: Fix those damn iterators
-
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
