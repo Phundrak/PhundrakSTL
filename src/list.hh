@@ -1,5 +1,8 @@
-#include <cstdlib>
+// TODO: Fix those damn iterators
+
 #include <algorithm>
+#include <cstdlib>
+#include <iostream>
 #include <memory>
 #include <utility>
 
@@ -12,8 +15,26 @@ template <class T, class Allocator = std::allocator<T>> class list {
 private:
   struct cell {
     cell() = default;
-    explicit cell(const T& value) : x{value}, p{nullptr}, n{nullptr} {}
-    explicit cell(T&& value) : x{value}, p{nullptr}, n{nullptr} {}
+    explicit cell(const T &value) : x{value}, p{nullptr}, n{nullptr} {}
+    explicit cell(T &&value) : x{value}, p{nullptr}, n{nullptr} {}
+    cell(const cell &other) : x{other.x}, p{other.p}, n{other.n} {}
+    cell(cell &&other) : x{T{}}, p{nullptr}, n{nullptr} {
+      std::swap(x, other.x);
+      std::swap(p, other.p);
+      std::swap(n, other.n);
+    }
+    cell &operator=(const cell &other) {
+      x = other.x;
+      p = other.p;
+      n = other.n;
+      return *this;
+    }
+    cell &operator=(cell &&other) {
+      std::swap(x, other.x);
+      std::swap(other.n, n);
+      std::swap(p, other.p);
+      return *this;
+    }
     cell *p;
     cell *n;
     T x;
@@ -24,10 +45,8 @@ private:
 
 public:
   class iterator;
-  // class const_iterator;
-  using const_iterator = const iterator;
   class reverse_iterator;
-  // class const_reverse_iterator;
+  using const_iterator = const iterator;
   using const_reverse_iterator = const reverse_iterator;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -187,9 +206,7 @@ public:
   //                                 Capacity                                //
   /////////////////////////////////////////////////////////////////////////////
 
-  bool empty() const noexcept {
-    return sentry->p == sentry;
-  }
+  bool empty() const noexcept { return sentry->p == sentry; }
 
   size_type size() const {
     cell *it = sentry->n;
@@ -236,17 +253,17 @@ public:
     return iterator{pos};
   }
 
-  template<class InputIt>
+  template <class InputIt>
   iterator insert(const_iterator pos, InputIt first, InputIt last) {
-    for(; first != last; ++first)
+    for (; first != last; ++first)
       insert(pos, *first);
     return iterator{pos};
   }
 
   // emplace //////////////////////////////////////////////////////////////////
 
-  template<class... Args>
-  iterator emplace(const_iterator pos, Args&&... args) {
+  template <class... Args>
+  iterator emplace(const_iterator pos, Args &&... args) {
     return insert(pos, T{std::forward<Args>(args)...});
   }
 
@@ -257,14 +274,14 @@ public:
     pos->n->p = pos->p;
     pos->n = nullptr;
     pos->p = nullptr;
-    cell* todel = pos;
+    cell *todel = pos;
     ++pos;
     delete todel;
     return pos;
   }
 
   iterator erase(const_iterator begin, const_iterator end) {
-    while(begin != end) {
+    while (begin != end) {
       begin = erase(begin);
     }
     return begin;
@@ -281,7 +298,7 @@ public:
     sentry->p = c;
   }
 
-  void push_back(T&& v) {
+  void push_back(T &&v) {
     cell *c = new cell;
     std::swap(c->x, v);
     c->p = sentry->p;
@@ -292,15 +309,21 @@ public:
 
   // emplace_back /////////////////////////////////////////////////////////////
 
-  template<class... Args>
-  T& emplace_back(Args&&... args) {
+  template <class... Args> T &emplace_back(Args &&... args) {
     emplace(begin(), args...);
     return *begin();
   }
 
   // pop_back /////////////////////////////////////////////////////////////////
 
-  bool empty() { return sentry->p == sentry; }
+  void pop_back() {
+    cell *c = sentry->p;
+    sentry->p = c->p;
+    c->p->n = sentry;
+    delete c;
+  }
+
+  // push_front ///////////////////////////////////////////////////////////////
 
   void push_front(const T &v) {
     cell *c = new cell;
@@ -311,6 +334,24 @@ public:
     sentry->n = c;
   }
 
+  void push_front(T &&value) {
+    cell *c = new cell;
+    std::swap(c->x, value);
+    c->n = sentry->n;
+    c->p = sentry;
+    sentry->n->p = c;
+    sentry->p = c;
+  }
+
+  // emplace_front ////////////////////////////////////////////////////////////
+
+  template <class... Args> T &emplace_front(Args &&... args) {
+    emplace(end(), args...);
+    return *end();
+  }
+
+  // pop_front ////////////////////////////////////////////////////////////////
+
   void pop_front() {
     cell *c = sentry->n;
     sentry->n = c->n;
@@ -318,12 +359,299 @@ public:
     delete c;
   }
 
-  void pop_back() {
-    cell *c = sentry->p;
-    sentry->p = c->p;
-    c->p->n = sentry;
-    delete c;
+  // resize ///////////////////////////////////////////////////////////////////
+
+  void resize(size_type count) {
+    if (count > size())
+      while (size() < count)
+        push_back(T());
+    else
+      while (size() > count)
+        pop_back();
   }
+
+  void resize(size_type count, const T &value) {
+    if (count > size())
+      while (size() < count)
+        push_back(value);
+    else
+      while (size() > count)
+        pop_back();
+  }
+
+  // swap /////////////////////////////////////////////////////////////////////
+
+  void swap(list &other) noexcept {
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int e) {
+      std::cout << "An error has occured: " << this << " and " << *other
+                << " do not have the same allocator.\nAborting...\n";
+      std::terminate();
+    }
+    std::swap(other.sentry, sentry);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  //                                Operations                               //
+  /////////////////////////////////////////////////////////////////////////////
+
+  // merge ////////////////////////////////////////////////////////////////////
+
+  void merge(list &other) {
+    if (this == other)
+      return;
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int error) {
+      std::cout << "Error in void List<T>::merge(list& other): " << this
+                << " and " << *other << " do not share the same allocator.\n";
+    }
+    sentry->p->n = other.sentry->n;
+    other.sentry->n->p = sentry->p;
+    other.sentry->p->n = sentry;
+    sentry->p = other.sentry->p;
+    other.sentry->n = other.sentry;
+    other.sentry->p = other.sentry;
+    std::sort(*this);
+  }
+
+  void merge(list &&other) {
+    if (this == other)
+      return;
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int error) {
+      std::cout << "Error in void List<T>::merge(list &&other):\n"
+                << this << " and " << *other
+                << " do not share the same allocator.\n";
+    }
+    sentry->p->n = other.sentry->n;
+    other.sentry->n->p = sentry->p;
+    other.sentry->p->n = sentry;
+    sentry->p = other.sentry->p;
+    other.sentry->n = other.sentry;
+    other.sentry->p = other.sentry;
+    std::sort(*this);
+  }
+
+  template <class Compare> void merge(list &other, Compare comp) {
+    if (this == other)
+      return;
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int error) {
+      std::cout << "Error in template <class Compare> void List<T>::merge(list "
+                   "&other, Compare comp):\n"
+                << this << " and " << *other
+                << " do not share the same allocator.\n";
+    }
+    sentry->p->n = other.sentry->n;
+    other.sentry->n->p = sentry->p;
+    other.sentry->p->n = sentry;
+    sentry->p = other.sentry->p;
+    other.sentry->n = other.sentry;
+    other.sentry->p = other.sentry;
+    std::sort(*this, comp);
+  }
+
+  template <class Compare> void merge(list &&other, Compare comp) {
+    if (this == other)
+      return;
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int error) {
+      std::cout << "Error in template<class Compare> void "
+                   "List<T>::merge(list&& other, Compare comp):\n"
+                << this << " and " << *other
+                << " do not share the same allocator.\n";
+    }
+    sentry->p->n = other.sentry->n;
+    other.sentry->n->p = sentry->p;
+    other.sentry->p->n = sentry;
+    sentry->p = other.sentry->p;
+    other.sentry->n = other.sentry;
+    other.sentry->p = other.sentry;
+    std::sort(*this, comp);
+  }
+
+  // splice ///////////////////////////////////////////////////////////////////
+
+  void splice(const_iterator pos, list &other) {
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int error) {
+      std::cout
+          << "Error in void List<T>::splice(const_iterator pos, list& other):\n"
+          << this << " and " << *other << " do not share the same allocator.\n";
+    }
+    pos->p->n = other.sentry->n;
+    other.sentry->p->n = pos;
+    other.sentry->n->p = pos->p;
+    pos->p = other.sentry->p;
+    other.sentry->p = other.sentry;
+    other.sentry->n = other.sentry;
+  }
+
+  void splice(const_iterator pos, list &&other) {
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int error) {
+      std::cout
+          << "Error in void List<T>::splice(const_iterator pos, list& other):\n"
+          << this << " and " << *other << " do not share the same allocator.\n";
+    }
+    pos->p->n = other.sentry->n;
+    other.sentry->p->n = pos;
+    other.sentry->n->p = pos->p;
+    pos->p = other.sentry->p;
+    other.sentry->p = other.sentry;
+    other.sentry->n = other.sentry;
+  }
+
+  void splice(const_iterator pos, list &other, const_iterator it) {
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int error) {
+      std::cout
+          << "Error in void List<T>::splice(const_iterator pos, list& other):\n"
+          << this << " and " << *other << " do not share the same allocator.\n";
+    }
+
+    it->p->n = it->n;
+    it->n->p = it->p;
+    it->p = it->p;
+    it->n = pos;
+    pos->p->n = it;
+    pos->p = it;
+  }
+
+  void splice(const_iterator pos, list &&other, const_iterator it) {
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int error) {
+      std::cout
+          << "Error in void List<T>::splice(const_iterator pos, list& other):\n"
+          << this << " and " << *other << " do not share the same allocator.\n";
+    }
+
+    it->p->n = it->n;
+    it->n->p = it->p;
+    it->p = it->p;
+    it->n = pos;
+    pos->p->n = it;
+    pos->p = it;
+  }
+
+  void splice(const_iterator pos, list &other, const_iterator first,
+              const_iterator last) {
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int error) {
+      std::cout
+          << "Error in void List<T>::splice(const_iterator pos, list& other):\n"
+          << this << " and " << *other << " do not share the same allocator.\n";
+    }
+
+    first->p->n = last;
+    pos->p->n = first;
+    last->p->n = pos;
+    auto cell = last->p;
+    last->p = first->p;
+    first->p = pos->n;
+    pos->n = cell;
+  }
+
+  void splice(const_iterator pos, list &&other, const_iterator first,
+              const_iterator last) {
+    try {
+      if (get_allocator() != other.get_allocator())
+        throw 20;
+    } catch (int error) {
+      std::cout
+          << "Error in void List<T>::splice(const_iterator pos, list& other):\n"
+          << this << " and " << *other << " do not share the same allocator.\n";
+    }
+
+    first->p->n = last;
+    pos->p->n = first;
+    last->p->n = pos;
+    auto cell = last->p;
+    last->p = first->p;
+    first->p = pos->n;
+    pos->n = cell;
+  }
+
+  // remove, remove_if ////////////////////////////////////////////////////////
+
+  void remove(const T &value) {
+    for (auto itr = begin(); itr != end(); ++itr)
+      if (itr->x == value) {
+        auto elem = itr;
+        --itr;
+        elem->p->n = elem->n;
+        elem->n->p = elem->p;
+        elem->n = nullptr;
+        elem->p = nullptr;
+        delete elem;
+      }
+  }
+
+  template <class UnaryPredicate> void remove(UnaryPredicate p) {
+    for (auto itr = begin(); itr != end(); ++itr) {
+      if (p(*itr)) {
+        auto elem = itr;
+        --itr;
+        elem->p->n = elem->n;
+        elem->n->p = elem->p;
+        elem->n = nullptr;
+        elem->p = nullptr;
+        delete elem;
+      }
+    }
+  }
+
+  // reverse //////////////////////////////////////////////////////////////////
+
+  void reverse() noexcept {
+    list<T> list{};
+    while (sentry->n != sentry) {
+      sentry->n->p = list.sentry->p;
+      list.sentry->p->n = sentry->n;
+      sentry->n->n->p = sentry;
+      list.sentry->p = sentry->n;
+      sentry->n = sentry->n->n;
+      list.sentry->p->n = list.sentry;
+    }
+  }
+
+  // unique ///////////////////////////////////////////////////////////////////
+
+  void unique() {
+    for(auto elem = sentry->n; elem->n != sentry; elem = elem->n)
+      if(elem->x == elem->n->x)
+        erase(iterator{elem->n});
+  }
+
+  template<class BinaryPredicate> void unique(BinaryPredicate p) {
+    for(auto elem = sentry->n; elem->n != sentry; elem = elem->n)
+      if(p(elem, elem->n))
+        erase(iterator{elem->n});
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  //                              Iterator class                             //
+  /////////////////////////////////////////////////////////////////////////////
 
   class iterator {
 
@@ -379,14 +707,14 @@ public:
     }
 
     bool operator==(cell *point) { return point == it; }
-    bool operator==(const iterator &other) { return other.it = it; }
+    bool operator==(const iterator &other) { return other.it == it; }
     bool operator==(iterator &&other) { return other.it == it; }
 
     bool operator!=(cell *point) { return point != it; }
     bool operator!=(const iterator &other) { return other.it != it; }
     bool operator!=(iterator &&other) { return other.it != it; }
 
-    T operator*() { return it->x; }
+    T& operator*() { return it->x; }
   };
 
   class reverse_iterator : protected iterator {

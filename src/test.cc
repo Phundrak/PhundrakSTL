@@ -14,5 +14,12 @@ int main(void) {
     printf("%c\n", c);
   }
 
+  list<int> test_unique {1,1,1,1,1,2,2,2,3,3,3,4,4,1,1,5,1,2,1,1,3,3,3};
+  printf("Elements before unique():\n");
+  for(const auto& elem : test_unique)
+    printf("%2d,", elem);
+
+  test_unique.unique();
+
   return 0;
 }
