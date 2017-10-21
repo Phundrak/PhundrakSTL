@@ -68,21 +68,21 @@ namespace phundrak {
     }
 
     list(size_type count, const T &value, const Allocator &alloc = Allocator())
-      : list(alloc), alloc_{alloc} {
+      : list{alloc} {
       while (size() < count)
         push_back(value);
     }
 
     explicit list(size_type count, const Allocator &alloc = Allocator())
-      : list(alloc), alloc_{alloc} {
+      : list{alloc} {
       while (size() < count)
         push_back(T());
     }
 
     template <class InputIt>
     list(InputIt first, InputIt last, const Allocator &alloc = Allocator())
-      : list(alloc) {
-      while (first != last)
+      : list{alloc} {
+      for (;first != last; ++first)
         push_back(*first);
     }
 
